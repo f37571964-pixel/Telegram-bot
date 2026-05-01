@@ -31,13 +31,17 @@ async function connectMongoDB() {
     }
     
     try {
-        mongoClient = new MongoClient(MONGODB_URI);
+        mongoClient = new MongoClient(MONGODB_URI, {
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        });
         await mongoClient.connect();
         db = mongoClient.db('typecat');
         console.log('✅ MongoDB подключен!');
         return true;
     } catch (error) {
         console.error('❌ Ошибка подключения к MongoDB:', error.message);
+        console.log('⚠️ Продолжаем работу без MongoDB (используем файлы)');
         return false;
     }
 }
