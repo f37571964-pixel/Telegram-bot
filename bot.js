@@ -15,6 +15,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const versionFile = path.join(__dirname, 'version.json');
+const versionsFile = path.join(__dirname, 'versions.json');
 const leaderboardFile = path.join(__dirname, 'leaderboard.json');
 const maintenanceFile = path.join(__dirname, 'maintenance.json');
 const installerFile = path.join(__dirname, 'installer.exe'); // Путь к установщику
@@ -516,6 +517,26 @@ app.get('/version', (req, res) => {
 app.get('/version.json', (req, res) => {
     const versionData = loadVersion();
     res.json(versionData);
+});
+
+// API endpoint для получения всех версий
+app.get('/versions', (req, res) => {
+    try {
+        const versionsData = JSON.parse(fs.readFileSync(versionsFile, 'utf8'));
+        res.json(versionsData);
+        console.log('✅ Запрос списка версий');
+    } catch (e) {
+        res.status(500).json({ error: 'Ошибка загрузки версий' });
+    }
+});
+
+app.get('/versions.json', (req, res) => {
+    try {
+        const versionsData = JSON.parse(fs.readFileSync(versionsFile, 'utf8'));
+        res.json(versionsData);
+    } catch (e) {
+        res.status(500).json({ error: 'Ошибка загрузки версий' });
+    }
 });
 
 // API endpoint для скачивания установщика
