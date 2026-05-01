@@ -1,90 +1,117 @@
-# TypeCat Update Bot
+# 🤖 TypeCat Telegram Bot
 
-Telegram бот для управления обновлениями TypeCat.
+Telegram бот для управления обновлениями TypeCat и глобального лидерборда.
 
-## Установка
+## 🚀 Быстрый старт
 
-1. Создайте бота через @BotFather в Telegram
-2. Получите токен бота
-3. Узнайте свой Telegram ID (можно через @userinfobot)
-4. Установите зависимости:
+### Локальный запуск
+
 ```bash
 cd telegram-bot
 npm install
-```
-
-5. Откройте `bot.js` и замените:
-   - `YOUR_BOT_TOKEN_HERE` на токен от BotFather
-   - `YOUR_TELEGRAM_ID` на ваш Telegram ID
-
-6. Запустите бота:
-```bash
 npm start
 ```
 
-## Использование
+### Деплой на Render.com
 
-### Команды бота:
+1. Загрузи код на GitHub: `upload-to-github.bat`
+2. Следуй инструкции: [HOSTING.md](./HOSTING.md)
+3. **ВАЖНО:** Настрой MongoDB: [MONGODB_SETUP.md](./MONGODB_SETUP.md)
 
-- `/start` - Показать список команд
-- `/version` - Показать текущую версию
-- `/update` - Опубликовать новое обновление
-- `/changelog` - Показать список изменений
+## ⚠️ КРИТИЧНО: MongoDB обязателен!
 
-### Публикация обновления:
+**Render.com бесплатный план НЕ сохраняет файлы!**
 
-1. Отправьте команду `/update`
-2. Отправьте данные в формате:
+Без MongoDB лидерборд будет очищаться при каждом перезапуске.
+
+📖 **Быстрое решение (5 минут):** [QUICK_FIX.md](./QUICK_FIX.md)
+
+## 📋 Возможности
+
+### Команды бота
+- `/start` - Список команд
+- `/version` - Текущая версия
+- `/update` - Опубликовать обновление
+- `/changelog` - Список изменений
+- `/test` - Тестовое уведомление
+- `/reset` - Сбросить версию
+
+### Лидерборд
+- `/leaderboard` - Топ-10 игроков
+- `/stats` - Статистика
+- `/clearleaderboard` - Очистить
+
+### Тех. работы
+- `/maintenance` - Включить/выключить
+
+### API Endpoints
+- `GET /version` - Информация о версии
+- `GET /leaderboard` - Топ-100 игроков
+- `POST /leaderboard/submit` - Отправить результат
+
+## 🔧 Настройка
+
+### Переменные окружения
+
+```env
+BOT_TOKEN=ваш_токен_бота
+ADMIN_ID=ваш_telegram_id
+PORT=3000
+MONGODB_URI=mongodb+srv://...
 ```
-1.0.3
-Краткое описание обновления
-https://ссылка-на-скачивание.exe
-- Добавлена новая функция
-- Исправлен баг
-- Улучшен дизайн
-```
 
-3. Бот сохранит информацию в `version.json`
-4. Пользователи получат уведомление при следующем запуске
+### Файлы
 
-## Деплой
+- `bot.js` - Основной код бота
+- `package.json` - Зависимости
+- `version.json` - Текущая версия
+- `leaderboard.json` - Локальный лидерборд (fallback)
+- `maintenance.json` - Статус тех. работ
 
-### Вариант 1: Локальный сервер
-Запустите бота на своём компьютере или VPS
+## 📚 Документация
 
-### Вариант 2: Heroku
-1. Создайте приложение на Heroku
-2. Загрузите код бота
-3. Добавьте переменные окружения
-4. Запустите dyno
+- [HOSTING.md](./HOSTING.md) - Как захостить бота
+- [MONGODB_SETUP.md](./MONGODB_SETUP.md) - Настройка MongoDB Atlas
+- [QUICK_FIX.md](./QUICK_FIX.md) - Быстрое решение проблемы с лидербордом
+- [LEADERBOARD.md](./LEADERBOARD.md) - Как работает лидерборд
 
-### Вариант 3: Vercel/Netlify
-Используйте serverless функции для API endpoint
+## 🔗 Ссылки
 
-## API Endpoint
+- Telegram канал: https://t.me/typecatoff
+- GitHub: https://github.com/f37571964-pixel/Telegram-bot
+- Render: https://telegram-bot-zw0g.onrender.com
 
-Бот создаёт файл `version.json` который доступен по адресу:
-```
-https://ваш-домен.com/version.json
-```
+## 📦 Зависимости
 
-Формат ответа:
 ```json
 {
-  "version": "1.0.3",
-  "description": "Описание обновления",
-  "downloadUrl": "https://ссылка-на-скачивание.exe",
-  "changelog": [
-    "- Изменение 1",
-    "- Изменение 2"
-  ],
-  "releaseDate": "2026-04-30"
+  "node-telegram-bot-api": "^0.64.0",
+  "express": "^4.18.2",
+  "cors": "^2.8.5",
+  "mongodb": "^6.3.0"
 }
 ```
 
-## Настройка в TypeCat
+## 🐛 Проблемы?
 
-В файле `update-checker.js` замените URL:
-```javascript
-const UPDATE_CHECK_URL = 'https://ваш-домен.com/version.json';
-```
+1. Проверь логи на Render
+2. Убедись что MongoDB настроен
+3. Проверь переменные окружения
+4. Протестируй локально
+
+## 📝 Changelog
+
+### v1.0.3
+- ✅ MongoDB интеграция для постоянного хранения
+- ✅ Лидерборд с топ-100
+- ✅ Режим тех. работ
+- ✅ API для приложения
+- ✅ Автоматический деплой
+
+## 👨‍💻 Автор
+
+KO6TIK - https://t.me/typecatoff
+
+## 📄 Лицензия
+
+MIT License

@@ -28,8 +28,17 @@
    - `BOT_TOKEN`: `8750155710:AAHWlSwjhx8untE64D9sJeLZTSpfTcJ1a3U`
    - `ADMIN_ID`: `6691530373`
    - `PORT`: `3000`
+   - `MONGODB_URI`: ваша строка подключения MongoDB (см. MONGODB_SETUP.md)
 
 5. Нажмите **"Create Web Service"**
+
+### ⚠️ ВАЖНО: Настройте MongoDB!
+
+**Render.com бесплатный план НЕ сохраняет файлы!** Лидерборд будет очищаться при каждом перезапуске.
+
+**Решение:** Используйте MongoDB Atlas (бесплатно навсегда)
+
+📖 **Подробная инструкция:** [MONGODB_SETUP.md](./MONGODB_SETUP.md)
 
 ### Шаг 3: Получите URL
 
@@ -249,7 +258,8 @@ server {
   "dependencies": {
     "node-telegram-bot-api": "^0.64.0",
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "mongodb": "^6.3.0"
   }
 }
 ```

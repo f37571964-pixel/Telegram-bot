@@ -4,18 +4,70 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { MongoClient } = require('mongodb');
 
 // Токен бота
-const BOT_TOKEN = '8750155710:AAHWlSwjhx8untE64D9sJeLZTSpfTcJ1a3U';
+const BOT_TOKEN = process.env.BOT_TOKEN || '8750155710:AAHWlSwjhx8untE64D9sJeLZTSpfTcJ1a3U';
 // ID администратора (ваш Telegram ID)
-const ADMIN_ID = '6691530373';
+const ADMIN_ID = process.env.ADMIN_ID || '6691530373';
+// MongoDB URI (если не задан, используем файлы)
+const MONGODB_URI = process.env.MONGODB_URI;
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const versionFile = path.join(__dirname, 'version.json');
 const leaderboardFile = path.join(__dirname, 'leaderboard.json');
+const maintenanceFile = path.join(__dirname, 'maintenance.json');
+const installerFile = path.join(__dirname, 'installer.exe'); // Путь к установщику
+
+// MongoDB клиент
+let mongoClient = null;
+let db = null;
+
+// Подключение к MongoDB
+async function connectMongoDB() {
+    if (!MONGODB_URI) {
+        console.log('⚠️ MongoDB не настроен, используем файлы (данные НЕ сохранятся при перезапуске!)');
+        return false;
+    }
+    
+    try {
+        mongoClient = new MongoClient(MONGODB_URI);
+        await mongoClient.connect();
+        db = mongoClient.db('typecat');
+        console.log('✅ MongoDB подключен!');
+        return true;
+    } catch (error) {
+        console.error('❌ Ошибка подключения к MongoDB:', error.message);
+        return false;
+    }
+}
+
+// Загрузить статус тех. работ
+function loadMaintenance() {
+    try {
+        return JSON.parse(fs.readFileSync(maintenanceFile, 'utf8'));
+    } catch (e) {
+        return { enabled: false, message: 'Технические работы' };
+    }
+}
+
+// Сохранить статус тех. работ
+function saveMaintenance(data) {
+    fs.writeFileSync(maintenanceFile, JSON.stringify(data, null, 2));
+}
 
 // Загрузить лидерборд
-function loadLeaderboard() {
+async function loadLeaderboard() {
+    if (db) {
+        try {
+            const leaderboard = await db.collection('leaderboard').find().sort({ clicks: -1 }).toArray();
+            return leaderboard;
+        } catch (error) {
+            console.error('Ошибка загрузки из MongoDB:', error);
+        }
+    }
+    
+    // Fallback к файлу
     try {
         return JSON.parse(fs.readFileSync(leaderboardFile, 'utf8'));
     } catch (e) {
@@ -23,9 +75,46 @@ function loadLeaderboard() {
     }
 }
 
-// Сохранить лидерборд
-function saveLeaderboard(data) {
-    fs.writeFileSync(leaderboardFile, JSON.stringify(data, null, 2));
+// Сохранить результат в лидерборд
+async function saveLeaderboardEntry(entry) {
+    if (db) {
+        try {
+            await db.collection('leaderboard').insertOne({
+                ...entry,
+                _id: undefined,
+                timestamp: new Date()
+            });
+            return true;
+        } catch (error) {
+            console.error('Ошибка сохранения в MongoDB:', error);
+        }
+    }
+    
+    // Fallback к файлу
+    const leaderboard = await loadLeaderboard();
+    leaderboard.push(entry);
+    leaderboard.sort((a, b) => b.clicks - a.clicks);
+    if (leaderboard.length > 1000) {
+        leaderboard.splice(1000);
+    }
+    fs.writeFileSync(leaderboardFile, JSON.stringify(leaderboard, null, 2));
+    return true;
+}
+
+// Очистить лидерборд
+async function clearLeaderboard() {
+    if (db) {
+        try {
+            await db.collection('leaderboard').deleteMany({});
+            return true;
+        } catch (error) {
+            console.error('Ошибка очистки MongoDB:', error);
+        }
+    }
+    
+    // Fallback к файлу
+    fs.writeFileSync(leaderboardFile, JSON.stringify([], null, 2));
+    return true;
 }
 
 // Загрузить текущую версию
@@ -34,9 +123,9 @@ function loadVersion() {
         return JSON.parse(fs.readFileSync(versionFile, 'utf8'));
     } catch (e) {
         return {
-            version: '1.0.2',
+            version: '1.0.3',
             description: 'Текущая версия TypeCat',
-            downloadUrl: 'https://www.mediafire.com/file/d7exoguu77bujxf/TypeCat-Setup-1.0.2.exe/file',
+            downloadUrl: 'https://www.mediafire.com/file/i24c5tfyd7zfveo/TypeCat-Setup-1.0.3.exe/file',
             changelog: [],
             releaseDate: new Date().toISOString().split('T')[0]
         };
@@ -68,7 +157,9 @@ bot.onText(/\/start/, (msg) => {
         '🏆 *Лидерборд:*\n' +
         '/leaderboard - Топ-10 игроков\n' +
         '/stats - Статистика\n' +
-        '/clearleaderboard - Очистить лидерборд',
+        '/clearleaderboard - Очистить лидерборд\n\n' +
+        '🔧 *Тех. работы:*\n' +
+        '/maintenance - Включить/выключить тех. работы',
         { parse_mode: 'Markdown' }
     );
 });
@@ -218,28 +309,29 @@ bot.onText(/\/reset/, (msg) => {
     }
     
     const defaultVersion = {
-        version: '1.0.2',
+        version: '1.0.3',
         description: 'Текущая версия TypeCat',
-        downloadUrl: 'https://www.mediafire.com/file/d7exoguu77bujxf/TypeCat-Setup-1.0.2.exe/file',
+        downloadUrl: 'https://www.mediafire.com/file/i24c5tfyd7zfveo/TypeCat-Setup-1.0.3.exe/file',
         changelog: [
-            '🐱 Анимация мяуканья кота',
-            '🔊 Настройка звука',
-            '⚙️ Красивые окна настроек'
+            '🏆 Лидерборд',
+            '👤 Логин и регистрация',
+            '🎩 20 шапок',
+            '🔥 Мифические шапки'
         ],
-        releaseDate: '2026-04-30'
+        releaseDate: '2026-05-01'
     };
     
     saveVersion(defaultVersion);
     
     bot.sendMessage(chatId,
-        `🔄 *Версия сброшена на 1.0.2*\n\n` +
+        `🔄 *Версия сброшена на 1.0.3*\n\n` +
         `Тестовое обновление удалено.`,
         { parse_mode: 'Markdown' }
     );
 });
 
 // Команда /leaderboard - показать топ игроков
-bot.onText(/\/leaderboard/, (msg) => {
+bot.onText(/\/leaderboard/, async (msg) => {
     const chatId = msg.chat.id;
     
     if (chatId.toString() !== ADMIN_ID) {
@@ -247,7 +339,7 @@ bot.onText(/\/leaderboard/, (msg) => {
         return;
     }
     
-    const leaderboard = loadLeaderboard();
+    const leaderboard = await loadLeaderboard();
     
     if (leaderboard.length === 0) {
         bot.sendMessage(chatId, '📊 Лидерборд пуст');
@@ -265,7 +357,7 @@ bot.onText(/\/leaderboard/, (msg) => {
 });
 
 // Команда /clearleaderboard - очистить лидерборд
-bot.onText(/\/clearleaderboard/, (msg) => {
+bot.onText(/\/clearleaderboard/, async (msg) => {
     const chatId = msg.chat.id;
     
     if (chatId.toString() !== ADMIN_ID) {
@@ -273,12 +365,12 @@ bot.onText(/\/clearleaderboard/, (msg) => {
         return;
     }
     
-    saveLeaderboard([]);
+    await clearLeaderboard();
     bot.sendMessage(chatId, '🗑️ *Лидерборд очищен!*', { parse_mode: 'Markdown' });
 });
 
 // Команда /stats - статистика лидерборда
-bot.onText(/\/stats/, (msg) => {
+bot.onText(/\/stats/, async (msg) => {
     const chatId = msg.chat.id;
     
     if (chatId.toString() !== ADMIN_ID) {
@@ -286,7 +378,7 @@ bot.onText(/\/stats/, (msg) => {
         return;
     }
     
-    const leaderboard = loadLeaderboard();
+    const leaderboard = await loadLeaderboard();
     
     if (leaderboard.length === 0) {
         bot.sendMessage(chatId, '📊 Нет данных');
@@ -308,7 +400,102 @@ bot.onText(/\/stats/, (msg) => {
     bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
 });
 
-console.log('🤖 TypeCat Update Bot запущен!');
+// Команда /maintenance - включить/выключить тех. работы
+bot.onText(/\/maintenance/, (msg) => {
+    const chatId = msg.chat.id;
+    
+    if (chatId.toString() !== ADMIN_ID) {
+        bot.sendMessage(chatId, '❌ У вас нет доступа к этому боту.');
+        return;
+    }
+    
+    const maintenance = loadMaintenance();
+    const newStatus = !maintenance.enabled;
+    
+    saveMaintenance({
+        enabled: newStatus,
+        message: newStatus ? 'Лидерборд временно недоступен. Ведутся технические работы.' : ''
+    });
+    
+    const statusText = newStatus ? '🔧 *ВКЛЮЧЕНЫ*' : '✅ *ВЫКЛЮЧЕНЫ*';
+    bot.sendMessage(chatId,
+        `🔧 *Технические работы ${statusText}*\n\n` +
+        (newStatus ? 'Лидерборд теперь недоступен для пользователей.' : 'Лидерборд снова доступен!'),
+        { parse_mode: 'Markdown' }
+    );
+});
+
+// Команда /upload - загрузить установщик
+bot.onText(/\/upload/, (msg) => {
+    const chatId = msg.chat.id;
+    
+    if (chatId.toString() !== ADMIN_ID) {
+        bot.sendMessage(chatId, '❌ У вас нет доступа к этому боту.');
+        return;
+    }
+    
+    bot.sendMessage(chatId, 
+        '📤 *Загрузка установщика*\n\n' +
+        'Отправь мне .exe файл TypeCat Setup.\n' +
+        'Он будет доступен по ссылке:\n' +
+        '`https://telegram-bot-zw0g.onrender.com/download`',
+        { parse_mode: 'Markdown' }
+    );
+});
+
+// Обработка загрузки файла
+bot.on('document', async (msg) => {
+    const chatId = msg.chat.id;
+    
+    if (chatId.toString() !== ADMIN_ID) {
+        return;
+    }
+    
+    const document = msg.document;
+    
+    // Проверить что это .exe файл
+    if (!document.file_name.endsWith('.exe')) {
+        bot.sendMessage(chatId, '❌ Нужен .exe файл!');
+        return;
+    }
+    
+    bot.sendMessage(chatId, '⏳ Скачиваю файл...');
+    
+    try {
+        // Получить ссылку на файл
+        const fileLink = await bot.getFileLink(document.file_id);
+        
+        // Скачать файл
+        const https = require('https');
+        const file = fs.createWriteStream(installerFile);
+        
+        https.get(fileLink, (response) => {
+            response.pipe(file);
+            
+            file.on('finish', () => {
+                file.close();
+                bot.sendMessage(chatId,
+                    '✅ *Установщик загружен!*\n\n' +
+                    `📦 Файл: ${document.file_name}\n` +
+                    `📏 Размер: ${(document.file_size / 1024 / 1024).toFixed(2)} МБ\n\n` +
+                    '🔗 Доступен по ссылке:\n' +
+                    '`https://telegram-bot-zw0g.onrender.com/download`',
+                    { parse_mode: 'Markdown' }
+                );
+            });
+        }).on('error', (err) => {
+            bot.sendMessage(chatId, `❌ Ошибка загрузки: ${err.message}`);
+        });
+    } catch (error) {
+        bot.sendMessage(chatId, `❌ Ошибка: ${error.message}`);
+    }
+});
+
+// Инициализация при запуске
+(async () => {
+    await connectMongoDB();
+    console.log('🤖 TypeCat Update Bot запущен!');
+})();
 
 // Веб-сервер для API
 const app = express();
@@ -327,9 +514,34 @@ app.get('/version.json', (req, res) => {
     res.json(versionData);
 });
 
+// API endpoint для скачивания установщика
+app.get('/download', (req, res) => {
+    if (fs.existsSync(installerFile)) {
+        res.download(installerFile, 'TypeCat-Setup.exe', (err) => {
+            if (err) {
+                console.error('Ошибка скачивания:', err);
+                res.status(500).json({ error: 'Ошибка скачивания файла' });
+            } else {
+                console.log('✅ Файл скачан');
+            }
+        });
+    } else {
+        res.status(404).json({ error: 'Файл не найден' });
+    }
+});
+
 // API endpoint для получения лидерборда
-app.get('/leaderboard', (req, res) => {
-    const leaderboard = loadLeaderboard();
+app.get('/leaderboard', async (req, res) => {
+    // Проверка тех. работ
+    const maintenance = loadMaintenance();
+    if (maintenance.enabled) {
+        return res.status(503).json({ 
+            error: 'maintenance', 
+            message: maintenance.message 
+        });
+    }
+    
+    const leaderboard = await loadLeaderboard();
     // Вернуть топ 100
     const top = leaderboard.slice(0, 100);
     res.json(top);
@@ -337,35 +549,35 @@ app.get('/leaderboard', (req, res) => {
 });
 
 // API endpoint для отправки результата
-app.post('/leaderboard/submit', (req, res) => {
+app.post('/leaderboard/submit', async (req, res) => {
+    // Проверка тех. работ
+    const maintenance = loadMaintenance();
+    if (maintenance.enabled) {
+        return res.status(503).json({ 
+            error: 'maintenance', 
+            message: maintenance.message 
+        });
+    }
+    
     const { name, clicks, hats } = req.body;
     
     if (!name || !clicks) {
         return res.status(400).json({ error: 'Неверные данные' });
     }
     
-    const leaderboard = loadLeaderboard();
-    
-    // Добавить новый результат
-    leaderboard.push({
+    // Сохранить результат
+    const entry = {
         name: name.substring(0, 20), // Ограничить длину имени
         clicks: parseInt(clicks),
         hats: parseInt(hats) || 0,
         date: new Date().toISOString()
-    });
+    };
     
-    // Сортировать по кликам
-    leaderboard.sort((a, b) => b.clicks - a.clicks);
+    await saveLeaderboardEntry(entry);
     
-    // Оставить топ 1000
-    if (leaderboard.length > 1000) {
-        leaderboard.splice(1000);
-    }
-    
-    saveLeaderboard(leaderboard);
-    
-    // Найти позицию игрока
-    const rank = leaderboard.findIndex(p => p.name === name && p.clicks === parseInt(clicks)) + 1;
+    // Получить обновленный лидерборд для определения позиции
+    const leaderboard = await loadLeaderboard();
+    const rank = leaderboard.findIndex(p => p.name === entry.name && p.clicks === entry.clicks) + 1;
     
     res.json({ 
         success: true, 
