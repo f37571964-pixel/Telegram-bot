@@ -3,7 +3,7 @@
     {
       "version": "1.0.4",
       "description": "Обновление TypeCat с новыми шапками и админ панелью",
-      "downloadUrl": "https://workupload.com/start/PLACEHOLDER_1_0_4",
+      "downloadUrl": "https://github.com/f37571964-pixel/Telegram-bot/releases/download/game/TypeCat-Setup-1.0.4.exe",
       "releaseDate": "2026-05-01",
       "changelog": [
         "🎩 5 новых шапок (всего 25)",
@@ -19,7 +19,7 @@
     {
       "version": "1.0.3",
       "description": "Стабильная версия с лидербордом",
-      "downloadUrl": "https://workupload.com/start/9AEbCsPbY5p",
+      "downloadUrl": "https://github.com/f37571964-pixel/Telegram-bot/releases/download/game/TypeCat-Setup-1.0.3.exe",
       "releaseDate": "2026-04-28",
       "changelog": [
         "🏆 Лидерборд",
@@ -31,7 +31,7 @@
     {
       "version": "1.0.2",
       "description": "Улучшения игрового процесса",
-      "downloadUrl": "https://workupload.com/start/pCYXcKnfxqW",
+      "downloadUrl": "https://github.com/f37571964-pixel/Telegram-bot/releases/download/game/TypeCat-Setup-1.0.2.exe",
       "releaseDate": "2026-04-25",
       "changelog": [
         "🎮 Улучшен игровой процесс",
@@ -42,7 +42,7 @@
     {
       "version": "1.0.1",
       "description": "Первое обновление",
-      "downloadUrl": "https://workupload.com/start/NBADDDdmdAz",
+      "downloadUrl": "https://github.com/f37571964-pixel/Telegram-bot/releases/download/game/TypeCat-Setup-1.0.1.exe",
       "releaseDate": "2026-04-20",
       "changelog": [
         "🎨 Улучшен интерфейс",
@@ -53,7 +53,7 @@
     {
       "version": "1.0.0",
       "description": "Первый релиз TypeCat",
-      "downloadUrl": "https://workupload.com/start/ckdwVRHdhvG",
+      "downloadUrl": "https://github.com/f37571964-pixel/Telegram-bot/releases/download/game/TypeCat-Setup-1.0.0.exe",
       "releaseDate": "2026-04-15",
       "changelog": [
         "🎉 Первый релиз!",
