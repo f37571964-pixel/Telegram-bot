@@ -128,9 +128,9 @@ function loadVersion() {
         return JSON.parse(fs.readFileSync(versionFile, 'utf8'));
     } catch (e) {
         return {
-            version: '1.0.3',
+            version: '1.0.4',
             description: 'Текущая версия TypeCat',
-            downloadUrl: 'https://www.mediafire.com/file/i24c5tfyd7zfveo/TypeCat-Setup-1.0.3.exe/file',
+            downloadUrl: 'https://github.com/f37571964-pixel/Telegram-bot/releases/download/game/TypeCat-Setup-1.0.4.exe',
             changelog: [],
             releaseDate: new Date().toISOString().split('T')[0]
         };
@@ -281,7 +281,7 @@ bot.onText(/\/test/, (msg) => {
     }
     
     const testVersion = {
-        version: '1.0.3',
+        version: '1.0.4',
         description: 'Тестовое обновление для проверки',
         downloadUrl: 'https://t.me/typecatoff',
         changelog: [
@@ -314,14 +314,14 @@ bot.onText(/\/reset/, (msg) => {
     }
     
     const defaultVersion = {
-        version: '1.0.3',
+        version: '1.0.4',
         description: 'Текущая версия TypeCat',
-        downloadUrl: 'https://www.mediafire.com/file/i24c5tfyd7zfveo/TypeCat-Setup-1.0.3.exe/file',
+        downloadUrl: 'https://github.com/f37571964-pixel/Telegram-bot/releases/download/game/TypeCat-Setup-1.0.4.exe',
         changelog: [
-            '🏆 Лидерборд',
-            '👤 Логин и регистрация',
-            '🎩 20 шапок',
-            '🔥 Мифические шапки'
+            '🎩 5 новых шапок (всего 25)',
+            '🔐 Админ панель для KO6TIK',
+            '🗄️ MongoDB интеграция',
+            '🐛 Исправлены баги'
         ],
         releaseDate: '2026-05-01'
     };
@@ -329,7 +329,7 @@ bot.onText(/\/reset/, (msg) => {
     saveVersion(defaultVersion);
     
     bot.sendMessage(chatId,
-        `🔄 *Версия сброшена на 1.0.3*\n\n` +
+        `🔄 *Версия сброшена на 1.0.4*\n\n` +
         `Тестовое обновление удалено.`,
         { parse_mode: 'Markdown' }
     );
@@ -611,6 +611,43 @@ app.post('/leaderboard/submit', async (req, res) => {
     });
     
     console.log(`✅ Новый результат: ${name} - ${clicks} кликов (место: ${rank})`);
+});
+
+// API endpoint для удаления игрока из лидерборда (только для админов)
+app.post('/leaderboard/delete', async (req, res) => {
+    const { username, name } = req.body;
+    const playerName = username || name; // Поддержка обоих полей
+    
+    if (!playerName) {
+        return res.status(400).json({ error: 'Не указано имя пользователя' });
+    }
+    
+    try {
+        if (db) {
+            // Удаляем из MongoDB
+            const result = await db.collection('leaderboard').deleteMany({ name: playerName });
+            console.log(`🗑️ Удалено ${result.deletedCount} записей для ${playerName} из MongoDB`);
+            res.json({ success: true, message: `Игрок ${playerName} удалён из лидерборда`, deletedCount: result.deletedCount });
+        } else {
+            // Удаляем из файла
+            let leaderboard = [];
+            if (fs.existsSync(leaderboardFile)) {
+                const data = fs.readFileSync(leaderboardFile, 'utf8');
+                leaderboard = JSON.parse(data);
+            }
+            
+            const originalLength = leaderboard.length;
+            leaderboard = leaderboard.filter(entry => entry.name !== playerName);
+            const deletedCount = originalLength - leaderboard.length;
+            
+            fs.writeFileSync(leaderboardFile, JSON.stringify(leaderboard, null, 2));
+            console.log(`🗑️ Удалено ${deletedCount} записей для ${playerName} из файла`);
+            res.json({ success: true, message: `Игрок ${playerName} удалён из лидерборда`, deletedCount: deletedCount });
+        }
+    } catch (error) {
+        console.error('❌ Ошибка удаления из лидерборда:', error);
+        res.status(500).json({ error: 'Ошибка удаления: ' + error.message });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
